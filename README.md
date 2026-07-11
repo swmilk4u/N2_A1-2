@@ -3,6 +3,8 @@
 
 본 보고서는 사용자가 입력한 특정 날짜를 기반으로 **Google Gemini API**와 **Naver Local Search API**를 유기적으로 연동하여 맞춤형 가을/여름 여행 코스 및 맛집 리스트를 생성하는 CLI 프로그램의 최종 구현 성과를 기술합니다.
 
+특히 초보자 관점에서 소스 코드와 핵심 원리를 완벽히 파악하고 동료나 채점관에게 쉽게 설명할 수 있도록 친절한 해설과 코드 조각을 곁들였습니다.
+
 ---
 
 ## 1. 과제 개요 및 개발 아키텍처
@@ -13,64 +15,150 @@
   - **Local/Map**: Naver Local Search API (지역/장소 검색)
   - **환경 및 유틸**: Python 3.10+, python-dotenv (환경변수 관리), requests (HTTP 통신)
 
+> **💡 [초보자를 위한 쉬운 개념 이해]**
+> - **파이프라인(Pipeline)**이란 공장의 '조립 라인'과 같습니다. 첫 번째 기계(Gemini)가 가공한 부품(도시 이름)을 받아서, 두 번째 기계(네이버 지도 검색)가 바로 조립하여 최종 제품(여행 일정표)을 완성해내는 일련의 연결 통로를 의미합니다.
+
 ---
 
-## 2. 과제 요구사항별 구현 현황 (Implementation Report)
-
-과제 가이드라인에 명시된 기능 요구사항과 제약 사항을 다음과 같이 모두 충족하여 구현을 완료했습니다.
+## 2. 과제 요구사항별 구현 현황 및 핵심 소스 코드 (Implementation Detail)
 
 ### ① CLI 인터페이스 및 입력값 검증 (argparse)
-- **구현 내용**: `argparse` 모듈을 적용하여 최상위 진입점 [travel_planner.py](./travel_planner.py)에서 `--date` (또는 `-date`) 인자를 인지하도록 구현했습니다.
-- **유효성 검증**: `datetime.strptime`을 활용하여 존재하지 않는 날짜나 비정상 날짜 형식이 들어오면 에러 메시지와 올바른 사용법을 터미널에 출력하고 즉시 프로그램을 종료(`sys.exit(1)`)시킵니다.
-- **대화형 입력 및 입력 정제 (UX 개선)**: 사용자가 명령행 인자 없이 더블클릭이나 단순 실행을 했을 때 프로그램이 즉시 종료되지 않도록 **대화형(인터랙티브) 실행 모드**로 자동 전환하여 입력을 대기하게 설계했습니다. 또한 입력 과정에서 사용자가 실수로 `--date "2026-03-15"`와 같이 명령어 전체를 적더라도 정규식(`re.search`)을 통해 날짜 정보만 영리하게 정제하여 처리하도록 예외 보정 처리를 완료했습니다.
+- **구현 내용**: `argparse` 모듈을 적용하여 최상위 진입점 [travel_planner.py](./travel_planner.py)에서 `--date` (또는 `-date`) 인자를 인지하도록 구현했습니다. 날짜 형식이 올바르지 않으면 즉시 올바른 사용법을 안내하고 종료시킵니다.
+- **사용자 편의성(UX) 업그레이드**: 사용자가 인자 없이 실행(예: 마우스 더블클릭 등)하면 **대화형(인터랙티브) 실행 모드**로 자동 전환하여 입력을 대기시킵니다. 사용자가 실수로 `--date "2026-03-15"`와 같이 명령어 전체를 적더라도 정규식을 통해 날짜 정보만 영리하게 정제하여 처리하도록 예외 보정 처리를 완료했습니다.
+
+#### 📂 핵심 소스 코드 조각 (Code Snippet)
+```python
+# travel_planner.py
+def main():
+    parser = argparse.ArgumentParser(description="날짜 입력 기반 국내 여행지 추천 및 맛집 검색 CLI 프로그램...")
+    parser.add_argument("--date", "-date", type=str, required=False, help="여행할 날짜 (형식: YYYY-MM-DD)")
+    
+    args = parser.parse_args()
+    date_str = args.date
+    interactive_mode = False
+    
+    # 인자가 입력되지 않았다면 대화형 입력을 유도 (더블클릭 실행 시 창 닫힘 방지)
+    if not date_str:
+        interactive_mode = True
+        print("\n=== Travel Planner 대화형 실행 모드 ===")
+        date_str = input("여행할 날짜를 입력해 주세요 (형식: YYYY-MM-DD, 예: 2026-03-15): ").strip()
+    
+    # 입력된 문자열에서 YYYY-MM-DD 날짜 형식만 자동으로 추출 (예외 입력 보정)
+    import re
+    if date_str:
+        match = re.search(r'\d{4}-\d{2}-\d{2}', date_str)
+        if match:
+            date_str = match.group(0)
+```
+
+> **💡 [발표 및 설명용 팁]**
+> "보통 파이썬 프로그램을 더블클릭하면 명령창이 켜졌다가 에러와 함께 1초 만에 스르륵 닫혀버립니다. 저희 프로그램은 **argparse** 옵션이 비어있으면 스스로 **대화형 모드**로 들어가 입력을 대기하고, 사용자가 입력창에 명령어를 실수로 섞어 써도 **정규식(Regular Expression)**을 돌려 날짜만 쏙 발라내기 때문에 오작동 없이 작동합니다."
+
+---
 
 ### ② LLM API 연동 및 JSON 구조화 (1차 추천)
-- **구현 내용**: 입력받은 날짜 정보를 바탕으로 Gemini 2.5-flash API를 활용하여 계절에 맞는 1차 추천 도시 목록과 관련 정보를 가져옵니다.
-- **스키마 강제 및 파싱 방어**: AI 응답이 반드시 순수 JSON 구조만 반환하도록 설정(`response_mime_type="application/json"`)하였으며, 1차 파싱 실패 시 프롬프트를 보정해 최대 1회 재시도(Retry)하는 방어 코드를 [llm_client.py](./02_source/llm_client.py)에 탑재했습니다.
-- **JSON 필수 스키마 준수**: 과제에서 요구한 필수 키를 모두 확보했습니다.
-  - `recommended_city` (추천 대표 도시, string)
-  - `weather` (상세 가을/여름 날씨 요약, string)
-  - `events` (시기별 문화 축제 목록, array of string)
-  - `reason` (선정 및 추천 근거 3~4문장, string)
+- **구현 내용**: 날짜 정보를 Google Gemini 2.5-flash API로 전달하여 계절에 가장 어울리는 국내 여행 지역, 상세 날씨, 행사, 추천 근거를 JSON 데이터 형식으로 응답받습니다.
+- **파싱 실패 방어**: LLM 응답이 올바른 JSON 구조가 아닐 경우, 에러 리스트에 기록하고 프롬프트를 좀 더 엄격하게 수정하여 **최대 1회 재요청(Retry)**하도록 설계했습니다.
+
+#### 📂 핵심 소스 코드 조각 (Code Snippet)
+```python
+# 02_source/llm_client.py
+def get_recommendation(self, date_str: str, error_handler) -> dict | None:
+    system_prompt = "You are a professional travel planner. You must respond ONLY with a JSON object."
+    prompt = f"""
+    날짜: {date_str}
+    이 시기에 한국에서 여행하기 좋은 국내 도시 2~3곳을 추천해줘.
+    다음 구조의 JSON 객체로 반드시 응답해줘.
+    {{
+        "recommended_cities": ["도시1", "도시2"],
+        "recommended_city": "도시1",
+        "weather": "이 시기 날씨 기온 요약",
+        "events": ["행사 목록 1~3개"],
+        "reason": "추천 근거 3~4문장"
+    }}
+    """
+    # 1차 호출 시도 및 JSON 파싱 실패 시 재시도 진행
+    try:
+        response_text = self._call_gemini_api(prompt, system_prompt, json_mode=True)
+        return json.loads(response_text)  # JSON 문자열을 파이썬 딕셔너리로 즉시 파싱
+    except Exception as e:
+        # 에러를 누적 기록하고 2차 시도 수행
+        error_handler.add_error("llm_recommendation_attempt1", "PARSE_ERROR", str(e))
+        # ... (이후 2차 시도 로직)
+```
+
+> **💡 [발표 및 설명용 팁]**
+> "인공지능(LLM)은 때때로 사람이 말하는 것처럼 '추천해 드리겠습니다!' 같은 미사여구를 붙여 답변을 줍니다. 하지만 프로그램이 이 답변을 받아 다음 지도 API의 입력값으로 쓰려면 컴퓨터가 다룰 수 있는 **구조화된 데이터(JSON)**여야 합니다. 그래서 저희는 Gemini API의 JSON 모드를 강제하고, 만약 형태가 깨지면 즉시 **1회 재요청**하여 견고하게 파싱 오류를 극복합니다."
+
+---
 
 ### ③ 지도/장소 검색 API 연동 및 예외 처리 (Naver Local)
-- **구현 내용**: [map_client.py](./02_source/map_client.py)를 생성하여 1차 추천된 도시 뒤에 자동으로 `" 맛집"` 키워드를 가공 주입(예: "부산 맛집")해 네이버 검색 API로 식당 N곳(최대 5곳)을 조회합니다.
-- **오류 격리 및 계속 진행**: 네이버 API의 401/403 인증 실패나 검색 결과가 0건인 상황에서도 전체 프로세스가 충돌을 일으키지 않고 계속 작동되도록 예외 처리했습니다. 맛집 추천 리스트만 "데이터 없음"으로 안전하게 표기한 채 최종 리포트 마크다운 파일 작성을 중단 없이 수행합니다.
+- **구현 내용**: 1차 추천 완료된 도시의 이름을 입력으로 받아, 자동으로 `" 맛집"`을 결합(예: "부산 맛집")해 네이버 로컬 검색 API를 통해 식당 명칭, 주소, 카테고리, 좌표, 웹페이지 주소를 최대 5곳 수집합니다.
+- **오류 격리 및 우아한 폴백**: API 키 인증 오류(401/403) 또는 검색 결과가 0건일지라도 프로그램이 비정상 종료(Crash)되지 않도록 `try-except`로 오류를 감싸고, 에러 이력을 남긴 채 **"데이터 없음"** 상태로 다음 단계(마크다운 리포트 생성)를 차분히 이어 나갑니다.
 
-### ④ 최종 여행 리포트 빌드 및 결과 출력
-- **구현 내용**: [report_generator.py](./02_source/report_generator.py) 및 Gemini API의 문장 요약/편집 기능을 활용해 수집된 정보와 맛집 리스트, 지번/도로명 주소, 클릭 가능한 연결 링크를 담아 가독성 높고 미학적인 여행 계획 마크다운 리포트를 자동 작성합니다.
-- **에러 요약 적재**: 파이프라인 과정 중 발생한 API 통신 에러, 인증 실패, 파싱 실패 등의 모든 예외 이력을 내부 `ErrorHandler` 객체에 누적하여, 최종 파일 하단의 `## 오류 요약(errors)` 및 수집용 원본 JSON 내의 `"errors": []` 리스트에 빠짐없이 기록 보존합니다.
-- **CLI 실시간 결과 출력**: 저장 파일 경로 안내에 그치지 않고, 깃허브 업로드 소스를 직접 열지 않아도 터미널 내에서 완성본을 바로 읽을 수 있도록 최종 마크다운 리포트 본문 전체를 CLI 화면에 직접 즉각 출력해 주도록 설계했습니다.
+#### 📂 핵심 소스 코드 조각 (Code Snippet)
+```python
+# 02_source/map_client.py
+def _search_naver(self, city_name: str, limit: int, error_handler) -> list:
+    url = "https://openapi.naver.com/v1/search/local.json"
+    headers = {
+        "X-Naver-Client-Id": self.naver_id,
+        "X-Naver-Client-Secret": self.naver_secret
+    }
+    params = {"query": f"{city_name} 맛집", "display": limit}
+    
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=15)
+        if response.status_code != 200:
+            # 401, 403 등의 에러 발생 시 핸들러에 적재하고 프로그램 중단 방지
+            error_handler.add_error("place_search", "AUTH_ERROR", f"HTTP {response.status_code}")
+            return []  # 빈 리스트 반환하여 다음 단계 진행 유도
+            
+        data = response.json()
+        items = data.get("items", [])
+        # ... (이후 데이터 정제 및 반환)
+    except Exception as e:
+        error_handler.add_error("place_search", "NETWORK_ERROR", str(e))
+        return []
+```
+
+> **💡 [발표 및 설명용 팁]**
+> "외부 지도 API(네이버)는 언제든지 인터넷 상태나 인증키 만료, API 일일 허용량 초과 등으로 멈출 수 있습니다. 이럴 때 프로그램 전체가 멈춰버리는 것은 나쁜 설계입니다. 저희는 이를 **오류 격리(Error Isolation)** 기법을 적용하여, 네이버 API가 실패해도 오류 내용만 일기장(errors)에 적어둔 뒤, 맛집 부분만 '데이터 없음'으로 처리하고 최종 여행 계획 보고서를 끝까지 완성해냅니다."
 
 ---
 
-## 3. 보너스 과제 수행 현황 (Bonus Features)
+### ④ 결과 캐싱 및 최종 리포트 출력
+- **결과 캐싱 (보너스)**: 동일 날짜로 재실행 시, 이미 `results/` 폴더에 캐싱된 `{date}_data.json` 원본 데이터 파일이 있는지 감사합니다. 파일이 존재할 경우 외부 API 호출을 생략해 쿼터를 절약하고 캐싱된 데이터로 1초 만에 마크다운 문서를 신속 재생성합니다.
+- **최종 출력**: 마크다운 파일 저장뿐만 아니라 CLI 콘솔 화면에 리포트 본문 전체를 줄무늬 경계선과 함께 출력하여 터미널 상에서 바로 결과를 즐길 수 있게 설계했습니다.
 
-프로그램의 아키텍처적 완성도와 성능을 고도화하기 위해 보너스 미션을 설계하여 완수했습니다.
+#### 📂 핵심 소스 코드 조각 (Code Snippet)
+```python
+# travel_planner.py
+# 3. 결과 캐싱 확인
+cached_data = get_cached_data(date_str)
 
-- **복수 지역 추천**: 1차 추천 시 단일 도시가 아닌 2~3곳의 복수 도시(`recommended_cities` 배열)를 선별하도록 LLM 프롬프트를 고도화했으며, 각 도시별로 루프(반복문)를 돌면서 네이버 API 맛집 검색을 순차 처리하여 지역별로 구획화된 맛집 일정을 깔끔하게 매핑합니다.
-- **결과 캐싱 (Speed & Cost Optimization)**: 동일 날짜로 재실행하는 경우, 이미 `results/` 폴더에 캐싱된 `{date}_data.json` 원본 데이터 파일이 있는지 사전 검사합니다. 캐시 파일이 감지되면 불필요하게 외부 Gemini/Naver API를 다시 호출하여 비용을 발생시키지 않고, 캐싱된 데이터를 즉시 불러와 1초 만에 최종 리포트 파일로 복원 및 재생성합니다.
+if cached_data:
+    print(f"  [캐시 감지] 기존에 실행된 {date_str}의 원본 데이터가 존재합니다. API 호출을 건너뜁니다.")
+    recommendation = {
+        "recommended_cities": cached_data.get("recommended_cities", []),
+        "recommended_city": cached_data.get("recommended_city", ""),
+        "weather": cached_data.get("weather", ""),
+        "events": cached_data.get("events", []),
+        "reason": cached_data.get("reason", "")
+    }
+    places_data = cached_data.get("restaurants", {})
+    # ... (생략된 데이터로 즉시 최종 리포트 빌드)
+```
 
 ---
 
-## 4. 🔒 API 키 관리 및 보안 준수 사항
+## 3. 🔒 API 키 관리 및 보안 준수 사항
 
 본 프로그램은 과제의 보안 및 비공개 수행 규칙에 맞추어 API 키 유출을 원천 차단하고 안전하게 관리하도록 설계 및 구현되었습니다.
 
 1. **환경변수(.env) 기반 관리**: API 키를 소스코드나 문서 내에 하드코딩하지 않고, 외부 설정 파일인 `.env`에 격리하여 로드하도록 구현했습니다.
 2. **템플릿 제공 및 가이드 분리**: 협업 및 배포 환경에서의 정보 노출 방지를 위해 실제 키 값을 지운 [.env.template](./.env.template)만을 리포지토리에 제공하여 안전성을 확보했습니다.
 3. **Git 추적 배제 (.gitignore)**: 실제 작동에 사용되는 `.env` 파일 및 실행 날짜 기준으로 자동 생성되는 로컬 데이터 폴더(`results/`)가 Git 버전 관리에 절대 수집되지 않도록 최상위 [.gitignore](./.gitignore)에 차단 규칙을 등록하여 우발적인 유출 사고를 방지했습니다.
-
----
-
-## 5. 📁 최종 생성 결과물 구성
-
-실행 완료 후 모든 데이터와 리포트는 `results/` 폴더 하위에 보관됩니다.
-
-1. **원본 데이터 JSON (`results/{YYYY-MM-DD}_data.json`)**:
-   - 1차 추천 결과 데이터, 네이버에서 검색된 맛집 정보(이름, 주소, 카테고리, 링크, 좌표), 프로세스 도중 발생하여 수집된 에러 이력(`errors` 리스트)을 저장하고 캐싱 원본으로 기능합니다.
-2. **최종 여행 리포트 Markdown (`results/{YYYY-MM-DD}_travel_plan.md`)**:
-   - 가을/여름 분위기에 맞춰 정제된 아름다운 마크다운 테마로 추천 지역, 추천 근거, 날씨 요약, 축제, 지역별 추천 식당 링크 리스트, 상세 1일 추천 코스 동선 제안을 모두 포함한 최종 보고서입니다.
 
 ---
 
