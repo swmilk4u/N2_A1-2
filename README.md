@@ -4,6 +4,33 @@
 
 ---
 
+### 📂 프로젝트 폴더 구조 및 파일 역할
+```text
+├── travel_planner.py       # 메인 실행 파일 (날짜 옵션 및 대화형 입력 처리)
+├── .env.template           # API 설정 양식 파일 (보안 유출 예방 설계도)
+├── .gitignore              # Git 버전 관리에서 .env 및 결과물(results/) 자동 차단
+├── README.md               # 최종 프로젝트 수행 보고서 (본 문서)
+├── 01_document/            # 프로젝트 관련 기획 및 요건 명세 문서 보관 폴더
+├── 02_source/              # 기능 구현의 뼈대를 이루는 핵심 소스코드 모듈 폴더
+│   ├── llm_client.py       # Google Gemini LLM API 연동 및 JSON 수집 모듈
+│   ├── map_client.py       # Naver Local API 연동 및 맛집 검색 모듈
+│   ├── report_generator.py # 수집된 데이터를 합쳐 가독성 높은 리포트로 조립하는 모듈
+│   └── utils.py            # 날짜 검증, 결과 캐싱(Caching), 오류 누적기 등 유틸 모듈
+└── results/                # 날짜별로 최종 생성되는 결과물 폴더 (JSON, Markdown)
+```
+
+### 🚀 간편 실행 방법
+- **날짜 옵션 지정 실행 (CLI)**:
+  ```bash
+  python travel_planner.py --date "2026-10-15"
+  ```
+- **화면 직접 입력 실행 (더블클릭 / 대화형)**:
+  ```bash
+  python travel_planner.py
+  ```
+
+---
+
 ## 1. 개요 및 개발 아키텍처
 
 - **수행 목표**: 단일 API 호출의 한계를 넘어, LLM의 구조화된 JSON 출력을 다음 지도 검색 API의 입력으로 결합하는 파이프라인 아키텍처를 구축하고, 예외 복구(Fallback) 및 최적화(Caching)를 만족하는 안정적인 비즈니스 로직을 실현합니다.
