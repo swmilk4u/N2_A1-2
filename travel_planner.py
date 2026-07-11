@@ -167,6 +167,13 @@ def main():
     json_path = save_json_data(date_str, raw_data)
     md_path = save_report(date_str, report_content)
     
+    # CLI에 최종 리포트 마크다운 출력
+    print("\n" + "="*80)
+    print("📄 생성된 최종 여행 리포트 내용")
+    print("="*80)
+    print(report_content)
+    print("="*80)
+    
     print(f"\n>>> 완료! 아래 결과 파일을 확인하세요.")
     print(f"  - 원본 데이터 JSON: {json_path}")
     print(f"  - 최종 리포트 Markdown: {md_path}\n")
