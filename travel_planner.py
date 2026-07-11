@@ -87,7 +87,7 @@ def main():
         
     print(f"\n>>> {date_str} 날짜의 여행 계획 생성을 시작합니다. (LLM: Gemini / Map: Naver)")
 
-    # 3단계: 이전에 구동해서 저장해 둔 기존 날짜 데이터가 있는지 확인
+    # 3단계: 결과 캐싱 확인 (이전에 저장해 둔 기존 날짜 데이터가 있는지 검사)
     cached_data = get_cached_data(date_str)
     
     if cached_data:

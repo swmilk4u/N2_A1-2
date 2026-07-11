@@ -131,7 +131,7 @@ def _search_naver(self, city_name: str, limit: int, error_handler) -> list:
 #### 📂 핵심 소스 코드
 ```python
 # travel_planner.py
-# 3단계: 이전에 구동해서 저장해 둔 기존 날짜 데이터가 있는지 확인
+# 3단계: 결과 캐싱 확인 (이전에 저장해 둔 기존 날짜 데이터가 있는지 검사)
 cached_data = get_cached_data(date_str)
 
 if cached_data:
