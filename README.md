@@ -1,0 +1,120 @@
+# ✈️ 국내 여행지 추천 및 맛집 검색 프로그램 (Travel Planner - Gemini & Naver)
+
+이 프로그램은 사용자가 입력한 특정 날짜(`-date "YYYY-MM-DD"`)를 기반으로 LLM API(**Google Gemini 2.5-flash**)가 어울리는 국내 여행지와 날씨, 지역 행사를 추천하고, 해당 지역의 맛집 정보를 지도/장소 API(**Naver Local Search**)를 통해 자동으로 검색하여 최종 여행 계획서 및 수집 데이터를 생성해 주는 CLI 기반 파이썬 애플리케이션입니다.
+
+---
+
+## 📌 주요 특징
+- **특정 API 공급자 단일 연동**: 과제 요구사항에 맞춰 LLM API는 **Google Gemini**, 지도/장소 검색 API는 **Naver Local Search**로 구현을 고정하여 직관적으로 동작합니다.
+- **예외 처리 및 폴백(Fallback) 보장**:
+  - LLM의 JSON 응답이 올바르지 않은 경우 최대 1회 재요청 프롬프트 시도.
+  - Naver Local API 장애 혹은 API 키 미설정(인증 실패) 시에도 맛집 목록만 "데이터 없음" 처리 후 리포트 생성을 계속 진행.
+  - LLM API의 전체 호출 실패 시 내장된 기본 폴백 데이터(서울)를 바탕으로 간이 리포트 생성 및 비정상 종료 방지.
+- **보너스 기능 탑재**:
+  - **복수 지역 추천**: 한 번에 2~3개의 도시를 동시에 추천받고, 각 도시별 맛집을 각각 검색하여 정리합니다.
+  - **결과 캐싱**: 동일한 날짜로 다시 실행할 경우, 이미 수집된 원본 JSON 데이터가 있으면 API 호출 없이 즉시 리포트를 재생성합니다.
+
+---
+
+## ⚙️ API 키 설정 방법 (.env)
+
+API 키는 보안 및 안전성을 위해 소스코드 내에 하드코딩하지 않고 환경변수로 관리합니다.
+
+1. 프로젝트 루트 디렉터리에 있는 `.env.template` 파일을 복사하여 새로운 `.env` 파일을 생성합니다.
+2. 각 API 제공업체에서 발급받은 실제 키 값을 입력합니다.
+
+```env
+# 1. LLM API Key (Google Gemini 필수)
+GEMINI_API_KEY=AIzaSyYourGeminiApiKey...
+
+# 2. Local/Map API Keys (Naver Local Search 필수)
+NAVER_CLIENT_ID=YourNaverClientId
+NAVER_CLIENT_SECRET=YourNaverClientSecret
+```
+
+> [!WARNING]
+> **API 키 유출 주의 사항**:
+> - `.env` 파일은 절대 Git 리포지토리나 공개된 저장소에 업로드(Commit)하지 마십시오.
+> - 본 프로젝트의 `.gitignore` 파일에 `.env` 및 실행 결과물이 생성되는 `results/` 폴더가 등록되어 있어 실수를 예방하고 있습니다.
+
+---
+
+## 🚀 실행 방법
+
+### 1. 패키지 설치
+프로그램 실행을 위해 필요한 의존성 라이브러리를 설치합니다.
+```bash
+pip install python-dotenv requests google-genai
+```
+
+### 2. CLI 실행
+필수 옵션 `--date` 또는 `-date` 뒤에 `"YYYY-MM-DD"` 형식의 날짜를 지정하여 프로그램을 실행합니다.
+```bash
+python travel_planner.py --date "2026-03-15"
+```
+
+**정상 실행 시 터미널 로그 예시**:
+```text
+>>> 2026-03-15 날짜의 여행 계획 생성을 시작합니다. (LLM: Gemini / Map: Naver)
+  [1/3] 1차 추천 생성 중(LLM)...
+    - 추천된 지역: 제주, 강릉
+  [2/3] 맛집 검색 중(지도/장소 API)...
+    - '제주' 맛집 검색 중...
+      ㄴ 5곳 검색 완료
+    - '강릉' 맛집 검색 중...
+      ㄴ 5곳 검색 완료
+  [3/3] 최종 리포트 생성 중(LLM)...
+
+>>> 완료! 아래 결과 파일을 확인하세요.
+  - 원본 데이터 JSON: results/2026-03-15_data.json
+  - 최종 리포트 Markdown: results/2026-03-15_travel_plan.md
+```
+
+**날짜 입력값 검증 실패 시 예시**:
+```text
+[오류] 입력한 날짜 '2026-13-45'는 유효하지 않은 날짜 형식이거나 올바르지 않습니다.
+사용법: python travel_planner.py --date "YYYY-MM-DD"  (예: 2026-03-15)
+```
+
+---
+
+## 📁 결과물 확인 방법
+실행 완료 후 모든 결과물은 프로젝트 루트의 `results/` 폴더에 날짜별로 저장됩니다.
+
+1. **원본 데이터 JSON (`results/{YYYY-MM-DD}_data.json`)**:
+   - LLM 1차 추천 데이터, 수집된 지도 맛집 목록, 실행 도중 감지된 모든 에러의 누적 요약(`errors: []`)을 포함합니다.
+2. **최종 여행 리포트 Markdown (`results/{YYYY-MM-DD}_travel_plan.md`)**:
+   - 가독성 높은 헤더 구성과 함께 추천 지역/이유, 날씨 요약, 행사/축제 목록, 맛집 링크 리스트, 1일 추천 일정이 미학적으로 편집된 보고서입니다.
+
+---
+
+## 📝 [학습 점검 및 과제 미션 보고서]
+
+### Q1. REST API의 요청/응답 구조와 HTTP 메서드(GET/POST)의 차이
+- **REST API**는 자원(Resource)을 이름으로 구분하여 해당 자원의 상태를 HTTP 프로토콜 상에서 주고받는 아키텍처 스타일입니다. 클라이언트가 특정 URL(URI)에 HTTP Headers, Query Parameters, Body 등을 포함하여 **요청(Request)**을 보내면, 서버는 처리 결과에 맞는 HTTP 상태 코드(예: 200 OK, 400 Bad Request, 401 Unauthorized)와 함께 JSON 등의 데이터로 **응답(Response)**합니다.
+- **HTTP Methods 차이**:
+  - **GET**: 서버로부터 정보를 조회하기 위해 사용됩니다. 데이터가 URL의 Query String에 노출되므로 보안성이 요구되거나 크기가 큰 데이터 전송에는 부적합합니다. (예: Naver Local Search 맛집 검색 API)
+  - **POST**: 서버에 데이터를 전송하여 새로운 리소스를 생성하거나 행위를 지시할 때 사용됩니다. 데이터는 HTTP Body에 담겨 전송되므로 대용량 및 비교적 안전한 전송이 가능합니다. (예: Google Gemini LLM 요청 API)
+
+### Q2. LLM 출력 결과를 구조화(JSON)하여 다음 단계의 입력으로 활용하는 파이프라인 흐름
+1. **정밀 프롬프트 설계**: LLM에게 답변 형식을 단순 텍스트가 아닌, 기정의된 스키마(예: `recommended_cities`, `weather`, `events`, `reason` 등)를 갖춘 순수 JSON 구조로만 응답하도록 강제합니다. (Gemini의 `response_mime_type` 설정 활용)
+2. **JSON 파싱 및 검증**: LLM의 응답 문자열을 `json.loads()`를 통해 파이썬 딕셔너리로 변환하고 필수 키들이 누락되었는지 확인합니다.
+3. **다음 API의 입력 값 주입**: 파싱에 성공하면 `recommendation["recommended_cities"]`에서 도시명을 하나씩 꺼내어 맛집 검색 API의 Query Parameter(예: `query="{city} 맛집"`)로 주입하여 연동 흐름을 완성합니다.
+
+### Q3. 외부 API 호출에서 발생하는 대표 오류와 대응 원칙
+- **인증 에러 (AUTH_ERROR, 401/403)**:
+  - *원인*: 유효하지 않은 API 키 사용, 키 미등록, 도메인/권한 차단.
+  - *대응*: 오류 목록(`errors`)에 인증 오류 상태를 기록하고, 해당 정보(예: 맛집)는 "데이터 없음" 처리 후 리포트 생성을 계속 진행합니다.
+- **쿼터/비용 초과 (RATE_LIMIT_ERROR, 429)**:
+  - *원인*: 무료 제공 트래픽 초과 혹은 너무 잦은 요청.
+  - *대응*: 대기 시간 후 재시도(Exponential Backoff)를 적용하거나 즉시 사용자에게 할당량 초과 사실을 알립니다.
+- **네트워크 에러 (NETWORK_ERROR / 타임아웃)**:
+  - *원인*: 서버 다운, 인터넷 차단, DNS 오류.
+  - *대응*: `requests.exceptions.RequestException` 등 예외 처리를 통해 일정 타임아웃(Timeout) 한도를 초과하면 에러로 판단하고 우아하게 기본 디폴트 값이나 캐시로 폴백합니다.
+- **파싱 에러 (PARSE_ERROR)**:
+  - *원인*: JSON 형식이 아닌 일반 텍스트나 깨진 구조를 반환함.
+  - *대응*: 1회에 한하여 프롬프트에 경고문을 추가해 재요청을 시도하고, 최종 실패 시에는 기본 폴백 값을 제공하여 시스템이 다운되지 않도록 합니다.
+
+### Q4. API 키를 코드에 직접 작성하지 않고 .env/환경변수로 관리하는 이유
+- **보안 사고 예방**: Git 등 소스 코드 관리 시스템(VCS)에 API 키가 올라가는 실수(Credential Leak)를 완벽히 격리 및 차단합니다.
+- **유지보수 및 배포 유연성**: 코드를 한 줄도 수정하지 않고 개발환경(Dev), 테스트환경(Test), 운영환경(Production)에 맞게 다르게 발급된 API 키나 연결 정보들을 파일 하나(`.env`) 변경만으로 즉시 스위칭할 수 있습니다.

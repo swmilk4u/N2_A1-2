@@ -1,0 +1,16 @@
+# Env
+.env
+
+# Output
+results/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
