@@ -1,7 +1,6 @@
 # ✈️ 국내 여행지 추천 및 맛집 검색 프로그램 최종 수행 보고서
-**[코디세이 AI 네이티브 과정 과제미션 N2_A1-2 최종 제출물]**
 
-이 프로그램은 사용자가 입력한 특정 날짜를 기반으로 **Google Gemini API**와 **Naver Local Search API**를 유기적으로 연동하여 맞춤형 여행 코스 및 맛집 리스트를 생성하는 CLI 프로그램입니다.
+이 프로그램([travel_planner.py](./travel_planner.py))은 사용자가 입력한 특정 날짜를 기반으로 **Google Gemini API**와 **Naver Local Search API**를 유기적으로 연동하여 맞춤형 여행 코스 및 맛집 리스트를 생성하는 CLI 프로그램입니다.
 
 ---
 
