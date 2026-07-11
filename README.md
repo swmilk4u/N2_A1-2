@@ -18,24 +18,15 @@
 
 ## ⚙️ API 키 설정 방법 (.env)
 
-API 키는 보안 및 안전성을 위해 소스코드 내에 하드코딩하지 않고 환경변수로 관리합니다.
+본 프로그램은 API 키 보안 및 유출 방지를 위해 환경변수 설정 파일(`.env`)을 사용합니다.
 
-1. 프로젝트 루트 디렉터리에 있는 `.env.template` 파일을 복사하여 새로운 `.env` 파일을 생성합니다.
-2. 각 API 제공업체에서 발급받은 실제 키 값을 입력합니다.
+1. 프로젝트 루트 디렉터리에 있는 `.env.template` 파일을 복사하여 `.env` 파일을 생성합니다.
+2. 생성한 `.env` 파일 내에 **Google Gemini API Key** 및 **Naver Local Search API Key(Client ID & Secret)**를 기입하고 저장합니다. 상세 기입 규칙은 `.env.template` 파일 내 안내 주석을 참고해 주세요.
 
-```env
-# 1. LLM API Key (Google Gemini 필수)
-GEMINI_API_KEY=AIzaSyYourGeminiApiKey...
-
-# 2. Local/Map API Keys (Naver Local Search 필수)
-NAVER_CLIENT_ID=YourNaverClientId
-NAVER_CLIENT_SECRET=YourNaverClientSecret
-```
-
-> [!WARNING]
-> **API 키 유출 주의 사항**:
-> - `.env` 파일은 절대 Git 리포지토리나 공개된 저장소에 업로드(Commit)하지 마십시오.
-> - 본 프로젝트의 `.gitignore` 파일에 `.env` 및 실행 결과물이 생성되는 `results/` 폴더가 등록되어 있어 실수를 예방하고 있습니다.
+> [!IMPORTANT]
+> **보안 주의 사항**:
+> - 실제 API 키가 입력된 `.env` 파일은 절대 Git 리포지토리나 외부 공유 공간에 노출하거나 커밋하지 마십시오.
+> - 본 프로젝트는 최상위 `.gitignore` 설정을 통해 `.env` 파일과 실행 결과물이 저장되는 `results/` 폴더가 Git의 추적 대상에서 자동으로 완벽히 차단 및 제외되어 안전을 보장합니다.
 
 ---
 
