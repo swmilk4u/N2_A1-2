@@ -23,7 +23,7 @@
 - **구현 내용**: `argparse` 모듈을 적용하여 최상위 진입점 [travel_planner.py](./travel_planner.py)에서 `--date` (또는 `-date`) 인자를 인지하도록 구현했습니다. 날짜 형식이 올바르지 않으면 즉시 올바른 사용법을 안내하고 종료시킵니다.
 - **사용자 편의성(UX) 업그레이드**: 사용자가 인자 없이 실행(예: 마우스 더블클릭 등)하면 **대화형(인터랙티브) 실행 모드**로 자동 전환하여 입력을 대기시키도록 예외 보정을 했습니다. 또한 입력 과정에서 사용자가 실수로 `--date "2026-03-15"`와 같이 명령어 전체를 적더라도 정규식을 통해 날짜 정보만 영리하게 정제하여 처리하도록 구현을 완료했습니다.
 
-#### 📂 핵심 소스 코드 조각 (Code Snippet)
+#### 📂 핵심 소스 코드
 ```python
 # travel_planner.py
 def main():
@@ -57,7 +57,7 @@ def main():
 - **구현 내용**: 날짜 정보를 Google Gemini 2.5-flash API로 전달하여 계절에 가장 어울리는 국내 여행 지역, 상세 날씨, 행사, 추천 근거를 JSON 데이터 형식으로 응답받습니다.
 - **파싱 실패 방어**: LLM 응답이 올바른 JSON 구조가 아닐 경우, 에러 리스트에 기록하고 프롬프트를 좀 더 엄격하게 수정하여 **최대 1회 재요청(Retry)**하도록 설계했습니다.
 
-#### 📂 핵심 소스 코드 조각 (Code Snippet)
+#### 📂 핵심 소스 코드
 ```python
 # 02_source/llm_client.py
 def get_recommendation(self, date_str: str, error_handler) -> dict | None:
@@ -93,7 +93,7 @@ def get_recommendation(self, date_str: str, error_handler) -> dict | None:
 - **구현 내용**: 1차 추천 완료된 도시의 이름을 입력으로 받아, 자동으로 `" 맛집"`을 결합(예: "부산 맛집")해 네이버 로컬 검색 API를 통해 식당 명칭, 주소, 카테고리, 좌표, 웹페이지 주소를 최대 5곳 수집합니다.
 - **오류 격리 및 우아한 폴백**: API 키 인증 오류(401/403) 또는 검색 결과가 0건일지라도 프로그램이 비정상 종료(Crash)되지 않도록 `try-except`로 오류를 감싸고, 에러 이력을 남긴 채 **"데이터 없음"** 상태로 다음 단계(마크다운 리포트 생성)를 차분히 이어 나갑니다.
 
-#### 📂 핵심 소스 코드 조각 (Code Snippet)
+#### 📂 핵심 소스 코드
 ```python
 # 02_source/map_client.py
 def _search_naver(self, city_name: str, limit: int, error_handler) -> list:
@@ -128,7 +128,7 @@ def _search_naver(self, city_name: str, limit: int, error_handler) -> list:
 - **결과 캐싱 (보너스)**: 동일 날짜로 재실행 시, 이미 `results/` 폴더에 캐싱된 `{date}_data.json` 원본 데이터 파일이 있는지 감사합니다. 파일이 존재할 경우 외부 API 호출을 생략해 쿼터를 절약하고 캐싱된 데이터로 1초 만에 마크다운 문서를 신속 재생성합니다.
 - **최종 출력**: 마크다운 파일 저장뿐만 아니라 CLI 콘솔 화면에 리포트 본문 전체를 줄무늬 경계선과 함께 출력하여 터미널 상에서 바로 결과를 즐길 수 있게 설계했습니다.
 
-#### 📂 핵심 소스 코드 조각 (Code Snippet)
+#### 📂 핵심 소스 코드
 ```python
 # travel_planner.py
 # 3. 결과 캐싱 확인
