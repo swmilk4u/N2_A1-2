@@ -60,6 +60,13 @@ def main():
         print("\n=== Travel Planner 대화형 실행 모드 ===")
         date_str = input("여행할 날짜를 입력해 주세요 (형식: YYYY-MM-DD, 예: 2026-03-15): ").strip()
     
+    # 입력된 문자열에서 YYYY-MM-DD 날짜 형식만 자동으로 추출 (예외 입력 보정)
+    import re
+    if date_str:
+        match = re.search(r'\d{4}-\d{2}-\d{2}', date_str)
+        if match:
+            date_str = match.group(0)
+    
     # 1. 날짜 검증
     if not validate_date(date_str):
         print(f"\n[오류] 입력한 날짜 '{date_str}'는 유효하지 않은 날짜 형식이거나 올바르지 않습니다.")
