@@ -74,12 +74,12 @@ def get_recommendation(self, date_str: str, error_handler) -> dict | None:
         "reason": "추천 근거 3~4문장"
     }}
     """
-    # 1단계: 1차 추천 요청 시도
+    # 1차 호출 시도 및 JSON 파싱 실패 시 재시도 진행
     try:
         response_text = self._call_gemini_api(prompt, system_prompt, json_mode=True)
         return json.loads(response_text)  # 인공지능이 보내준 JSON 답변 글자를 프로그램이 쓸 수 있는 데이터 형태로 해석하여 변환
     except Exception as e:
-        # 1차 요청에서 발생한 문제점을 기록장에 저장하고, 2차 재시도 진행
+        # 에러를 누적 기록하고 2차 시도 수행
         error_handler.add_error("llm_recommendation_attempt1", "PARSE_ERROR", str(e))
         # ... (이후 2차 시도 로직)
 ```
@@ -131,7 +131,7 @@ def _search_naver(self, city_name: str, limit: int, error_handler) -> list:
 #### 📂 핵심 소스 코드
 ```python
 # travel_planner.py
-# 3단계: 결과 캐싱 확인 (이전에 저장해 둔 기존 날짜 데이터가 있는지 검사)
+# 3단계: 이전에 구동해서 저장해 둔 기존 날짜 데이터가 있는지 확인
 cached_data = get_cached_data(date_str)
 
 if cached_data:
