@@ -46,17 +46,26 @@ def main():
     parser.add_argument(
         "--date", "-date",
         type=str,
-        required=True,
+        required=False,
         help="여행할 날짜 (형식: YYYY-MM-DD)"
     )
     
     args = parser.parse_args()
     date_str = args.date
+    interactive_mode = False
+    
+    # 인자가 입력되지 않았다면 대화형 입력을 유도
+    if not date_str:
+        interactive_mode = True
+        print("\n=== Travel Planner 대화형 실행 모드 ===")
+        date_str = input("여행할 날짜를 입력해 주세요 (형식: YYYY-MM-DD, 예: 2026-03-15): ").strip()
     
     # 1. 날짜 검증
     if not validate_date(date_str):
         print(f"\n[오류] 입력한 날짜 '{date_str}'는 유효하지 않은 날짜 형식이거나 올바르지 않습니다.")
         print("사용법: python travel_planner.py --date \"YYYY-MM-DD\"  (예: 2026-03-15)\n")
+        if interactive_mode:
+            input("종료하려면 엔터 키를 누르세요...")
         sys.exit(1)
         
     # 2. 에러 핸들러 및 API 클라이언트 초기화
@@ -161,6 +170,10 @@ def main():
     print(f"\n>>> 완료! 아래 결과 파일을 확인하세요.")
     print(f"  - 원본 데이터 JSON: {json_path}")
     print(f"  - 최종 리포트 Markdown: {md_path}\n")
+    
+    if interactive_mode:
+        print("="*80)
+        input("프로그램이 완료되었습니다. 창을 닫으려면 엔터 키를 누르세요...")
 
 if __name__ == "__main__":
     main()
