@@ -1,10 +1,10 @@
-# ✈️ 국내 여행지 추천 및 맛집 검색 프로그램 최종 수행 보고서
+# ✈️ 국내 여행지 추천 및 맛집 검색 프로그램 보고서
 
 이 프로그램([travel_planner.py](./travel_planner.py))은 사용자가 입력한 특정 날짜를 기반으로 **Google Gemini API**와 **Naver Local Search API**를 유기적으로 연동하여 맞춤형 여행 코스 및 맛집 리스트를 생성하는 CLI 프로그램입니다.
 
 ---
 
-### 📂 프로젝트 폴더 구조 및 파일 역할
+### 📂 프로젝트 폴더 및 주요 파일 역할
 ```text
 ├── travel_planner.py       # 메인 실행 파일 (날짜 옵션 및 대화형 입력 처리)
 ├── .env.template           
@@ -19,7 +19,7 @@
 └── results/                # 날짜별로 최종 생성되는 결과물 폴더 (JSON, Markdown)
 ```
 
-### 🚀 간편 실행 방법
+### 🚀 프로그램 실행 방법
 - **날짜 옵션 지정 실행 (CLI)**:
   ```bash
   python travel_planner.py --date "2026-10-15"
