@@ -40,7 +40,7 @@ def main():
         print("\n=== Travel Planner 대화형 실행 모드 ===")
         date_str = input("여행할 날짜를 입력해 주세요 (형식: YYYY-MM-DD, 예: 2026-03-15): ").strip()
     
-    # 입력된 문자열에서 YYYY-MM-DD 날짜 형식만 자동으로 추출 (예외 입력 보정)
+    # 입력받은 글자에서 연도-월-일(YYYY-MM-DD) 날짜 모양만 찾아내기 (실수로 옵션명을 같이 적었을 때의 입력 오류 방지)
     import re
     if date_str:
         match = re.search(r'\d{4}-\d{2}-\d{2}', date_str)
@@ -74,12 +74,12 @@ def get_recommendation(self, date_str: str, error_handler) -> dict | None:
         "reason": "추천 근거 3~4문장"
     }}
     """
-    # 1차 호출 시도 및 JSON 파싱 실패 시 재시도 진행
+    # 1단계: 1차 추천 요청 시도
     try:
         response_text = self._call_gemini_api(prompt, system_prompt, json_mode=True)
-        return json.loads(response_text)  # JSON 문자열을 파이썬 딕셔너리로 즉시 파싱
+        return json.loads(response_text)  # 인공지능이 보내준 JSON 답변 글자를 프로그램이 쓸 수 있는 데이터 형태로 해석하여 변환
     except Exception as e:
-        # 에러를 누적 기록하고 2차 시도 수행
+        # 1차 요청에서 발생한 문제점을 기록장에 저장하고, 2차 재시도 진행
         error_handler.add_error("llm_recommendation_attempt1", "PARSE_ERROR", str(e))
         # ... (이후 2차 시도 로직)
 ```
@@ -107,9 +107,9 @@ def _search_naver(self, city_name: str, limit: int, error_handler) -> list:
     try:
         response = requests.get(url, headers=headers, params=params, timeout=15)
         if response.status_code != 200:
-            # 401, 403 등의 에러 발생 시 핸들러에 적재하고 프로그램 중단 방지
+            # 인증 실패(아이디/비밀번호 에러) 등의 문제가 생기면 에러 기록장에 저장하고 프로그램이 갑자기 멈추는 것을 방지
             error_handler.add_error("place_search", "AUTH_ERROR", f"HTTP {response.status_code}")
-            return []  # 빈 리스트 반환하여 다음 단계 진행 유도
+            return []  # 맛집 정보를 비워둔 채(빈 리스트) 다음 단계로 계속 진행하도록 처리
             
         data = response.json()
         items = data.get("items", [])
@@ -131,7 +131,7 @@ def _search_naver(self, city_name: str, limit: int, error_handler) -> list:
 #### 📂 핵심 소스 코드
 ```python
 # travel_planner.py
-# 3. 결과 캐싱 확인
+# 3단계: 이전에 구동해서 저장해 둔 기존 날짜 데이터가 있는지 확인
 cached_data = get_cached_data(date_str)
 
 if cached_data:

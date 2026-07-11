@@ -3,7 +3,7 @@ import re
 import requests
 from dotenv import load_dotenv
 
-# dotenv 로드
+# 설정 파일(.env) 불러오기
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 env_path = os.path.join(parent_dir, ".env")
 load_dotenv(dotenv_path=env_path)
@@ -25,7 +25,7 @@ class MapClient:
 
     def _clean_html_tags(self, text: str) -> str:
         """
-        네이버 API 등에서 반환되는 문자열 내 HTML 태그(예: <b>...</b>)를 제거합니다.
+        네이버 검색 결과 글자에 포함되어 나오는 두꺼운 글씨 태그(예: <b>...</b>) 등을 깨끗하게 청소하여 지웁니다.
         """
         if not text:
             return ""
@@ -33,7 +33,7 @@ class MapClient:
 
     def _search_naver(self, city_name: str, limit: int, error_handler) -> list:
         """
-        Naver Local Search API를 사용하여 맛집 리스트를 검색합니다.
+        네이버 장소 검색 API를 이용하여 추천 도시의 맛집 리스트를 수집합니다.
         """
         url = "https://openapi.naver.com/v1/search/local.json"
         headers = {
@@ -102,7 +102,7 @@ class MapClient:
 
     def search_restaurants(self, city_name: str, error_handler, limit: int = 5) -> list:
         """
-        도시 이름 기반으로 맛집을 검색합니다. API 키가 없거나 실패 시 오류 목록에 기록하고 빈 리스트를 반환합니다.
+        추천된 도시명을 바탕으로 주변 식당을 검색합니다. 개발자 키가 등록되어 있지 않거나 에러 발생 시 기록장에 남기고 빈 목록을 반환해 다음 단계로 진행시킵니다.
         """
         if not self.has_valid_key():
             error_handler.add_error(

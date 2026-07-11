@@ -3,7 +3,7 @@ import json
 import requests
 from dotenv import load_dotenv
 
-# dotenv 로드
+# 설정 파일(.env) 불러오기
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 env_path = os.path.join(parent_dir, ".env")
 load_dotenv(dotenv_path=env_path)
@@ -34,7 +34,7 @@ class LLMClient:
         Gemini API를 google-genai SDK 혹은 REST API로 호출합니다.
         """
         if GEMINI_SDK_AVAILABLE and self.gemini_key:
-            # SDK 사용
+            # 구글 공식 도구(google-genai SDK)를 사용해 호출
             client = genai.Client(api_key=self.gemini_key)
             config = types.GenerateContentConfig(
                 system_instruction=system_prompt,
@@ -50,7 +50,7 @@ class LLMClient:
             )
             return response.text
         else:
-            # SDK가 없거나 오류가 있을 경우 REST API 폴백 호출
+            # 도구가 설치되어 있지 않거나 에러 발생 시, 웹 전송 주소(REST API)로 대체 호출
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.gemini_key}"
             headers = {"Content-Type": "application/json"}
             
@@ -78,9 +78,7 @@ class LLMClient:
             return result_json["candidates"][0]["content"]["parts"][0]["text"]
 
     def get_recommendation(self, date_str: str, error_handler) -> dict | None:
-        """
-        1차 여행지 추천 결과를 획득합니다. JSON 형식 출력을 강제하고 실패 시 1회 재시도합니다.
-        """
+        # 1차 여행지 추천 정보를 가져옵니다. 규격화된 데이터(JSON) 형태의 출력을 요구하고, 답변이 깨지면 1번 더 다시 시도합니다.
         system_prompt = (
             "You are a professional travel planner. You must respond ONLY with a JSON object. "
             "Do not include any markdown formatting (like ```json ... ```) in your response, just the raw JSON."
@@ -92,7 +90,7 @@ class LLMClient:
         다음 구조의 JSON 객체로 반드시 응답해줘.
         {{
             "recommended_cities": ["도시1", "도시2"],
-            "recommended_city": "도시1", // 추천된 도시 중 대표적인 한 곳
+            "recommended_city": "도시1", // 추천받은 도시들 중 대표 도시 한 곳 (과제 필수 항목)
             "weather": "이 시기 추천 도시들의 일반적이고 상세한 날씨 정보 및 기온 요약",
             "events": ["진행되는 축제 혹은 문화 행사 목록 1~3개"],
             "reason": "해당 날짜에 이 도시들을 추천하는 과학적이고 매력적인 근거 3~4문장"
@@ -129,7 +127,7 @@ class LLMClient:
             except Exception:
                 return None
 
-        # 1차 시도
+        # 1단계: 1차 추천 요청 시도
         try:
             response_text = self._call_gemini_api(prompt, system_prompt, json_mode=True)
             result = parse_json(response_text)
@@ -144,7 +142,7 @@ class LLMClient:
                 message=f"1차 시도 실패: {str(e)}"
             )
 
-        # 2차 시도 (재요청 1회)
+        # 2단계: 2차 다시 요청 시도 (답변 복구 1회)
         print("    [Warning] LLM 응답이 올바른 JSON 형식이 아닙니다. 프롬프트를 수정하여 재시도합니다 (최대 1회)...")
         retry_prompt = prompt + "\n경고: 이전 요청에서 JSON 형식이 올바르지 않았습니다. 반드시 중괄호로 시작하고 끝나는 엄격한 표준 JSON 형식만 출력해주세요. 다른 텍스트나 설명은 절대 덧붙이지 마세요."
         try:
@@ -163,9 +161,7 @@ class LLMClient:
             return None
 
     def generate_report(self, date_str: str, recommendation: dict, places_data: dict, error_handler) -> str | None:
-        """
-        1차 추천 JSON과 맛집 검색 결과(0건일 수 있음) 및 오류 요약을 전달하여 최종 리포트 Markdown을 생성합니다.
-        """
+        # 1차 추천 정보와 맛집 목록, 발생한 에러 기록들을 합쳐 최종 여행 계획 보고서(Markdown)를 작성합니다.
         system_prompt = "You are a professional travel writer. Generate a beautiful travel guide in Markdown format."
         
         prompt = f"""

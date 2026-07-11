@@ -41,7 +41,7 @@ def print_api_guide():
     print(guide)
 
 def main():
-    # CLI 인자 설정
+    # 터미널 실행 시 뒤에 붙이는 날짜 옵션 설정
     parser = argparse.ArgumentParser(description="날짜 입력 기반 국내 여행지 추천 및 맛집 검색 CLI 프로그램 (Gemini & Naver 연동)")
     parser.add_argument(
         "--date", "-date",
@@ -60,14 +60,14 @@ def main():
         print("\n=== Travel Planner 대화형 실행 모드 ===")
         date_str = input("여행할 날짜를 입력해 주세요 (형식: YYYY-MM-DD, 예: 2026-03-15): ").strip()
     
-    # 입력된 문자열에서 YYYY-MM-DD 날짜 형식만 자동으로 추출 (예외 입력 보정)
+    # 입력받은 글자에서 연도-월-일(YYYY-MM-DD) 날짜 모양만 찾아내기 (실수로 옵션명을 같이 적었을 때의 입력 오류 방지)
     import re
     if date_str:
         match = re.search(r'\d{4}-\d{2}-\d{2}', date_str)
         if match:
             date_str = match.group(0)
     
-    # 1. 날짜 검증
+    # 1단계: 날짜 유효성 검사 (입력된 날짜가 달력상 실제 존재하는 올바른 날짜인지 확인)
     if not validate_date(date_str):
         print(f"\n[오류] 입력한 날짜 '{date_str}'는 유효하지 않은 날짜 형식이거나 올바르지 않습니다.")
         print("사용법: python travel_planner.py --date \"YYYY-MM-DD\"  (예: 2026-03-15)\n")
@@ -75,19 +75,19 @@ def main():
             input("종료하려면 엔터 키를 누르세요...")
         sys.exit(1)
         
-    # 2. 에러 핸들러 및 API 클라이언트 초기화
+    # 2단계: 오류 기록기 및 연동 서비스(인공지능, 지도) 불러오기
     error_handler = ErrorHandler()
     llm_client = LLMClient()
     map_client = MapClient()
     
-    # API 키 검증 (Gemini와 Naver 둘 다 키가 설정되어 있어야 완벽한 기능이 작동함)
+    # 필수 API 키 확인 (구글 제미나이와 네이버 개발자 키가 모두 등록되어 있는지 확인)
     if not llm_client.has_valid_key() or not map_client.has_valid_key():
         print_api_guide()
         sys.exit(1)
         
     print(f"\n>>> {date_str} 날짜의 여행 계획 생성을 시작합니다. (LLM: Gemini / Map: Naver)")
 
-    # 3. 결과 캐싱 확인 (보너스 과제)
+    # 3단계: 이전에 구동해서 저장해 둔 기존 날짜 데이터가 있는지 확인
     cached_data = get_cached_data(date_str)
     
     if cached_data:
@@ -100,14 +100,14 @@ def main():
             "reason": cached_data.get("reason", "")
         }
         places_data = cached_data.get("restaurants", {})
-        # 캐싱된 에러 불러오기
+        # 저장되어 있던 에러 내역 다시 가져오기
         for err in cached_data.get("errors", []):
             error_handler.add_error(err["step"], err["type"], err["message"])
             
         print("  [3/3] 최종 리포트 재생성 중(LLM)...")
         report_content = llm_client.generate_report(date_str, recommendation, places_data, error_handler)
     else:
-        # 4. 1차 추천 생성 (LLM)
+        # 4단계: 인공지능(AI)에게 1차 국내 여행지 추천 받기
         print("  [1/3] 1차 추천 생성 중(LLM)...")
         recommendation = llm_client.get_recommendation(date_str, error_handler)
         
@@ -124,7 +124,7 @@ def main():
         cities = recommendation.get("recommended_cities", [recommendation.get("recommended_city")])
         print(f"    - 추천된 지역: {', '.join(cities)}")
         
-        # 5. 맛집 검색 (지도 API)
+        # 5단계: 지도 검색(네이버)으로 지역별 맛집 찾아보기
         print("  [2/3] 맛집 검색 중(지도/장소 API)...")
         places_data = {}
         for city in cities:
@@ -133,11 +133,11 @@ def main():
             places_data[city] = restaurants
             print(f"      ㄴ {len(restaurants)}곳 검색 완료")
             
-        # 6. 최종 리포트 생성 (LLM)
+        # 6단계: 인공지능(AI)의 필력으로 완성도 높은 여행 안내 보고서 글 작성하기
         print("  [3/3] 최종 리포트 생성 중(LLM)...")
         report_content = llm_client.generate_report(date_str, recommendation, places_data, error_handler)
 
-    # 7. 리포트 저장 및 결과 출력
+    # 7단계: 완성된 글 파일로 저장 및 결과 화면에 출력
     if not report_content:
         report_content = f"""# {date_str} 국내 여행 추천 리포트
 ## 추천 지역
@@ -159,7 +159,7 @@ def main():
 - 리포트 생성 단계에서 API 에러가 발생하여 마크다운이 간이 빌드되었습니다.
 """
     
-    # 원본 데이터 저장 준비
+    # 수집된 전체 원본 데이터를 저장할 양식으로 정리
     raw_data = {
         "recommended_cities": recommendation.get("recommended_cities"),
         "recommended_city": recommendation.get("recommended_city"),
@@ -170,11 +170,11 @@ def main():
         "errors": error_handler.get_errors()
     }
     
-    # 파일 저장
+    # 파일로 컴퓨터에 기록하기
     json_path = save_json_data(date_str, raw_data)
     md_path = save_report(date_str, report_content)
     
-    # CLI에 최종 리포트 마크다운 출력
+    # 검은색 화면(터미널)에 최종 보고서 글 출력하기
     print("\n" + "="*80)
     print("📄 생성된 최종 여행 리포트 내용")
     print("="*80)
