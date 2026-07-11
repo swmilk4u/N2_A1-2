@@ -34,7 +34,7 @@ def main():
     date_str = args.date
     interactive_mode = False
     
-    # 인자가 입력되지 않았다면 대화형 입력을 유도 (더블클릭 실행 시 창 닫힘 방지)
+    # 실행할 때 날짜를 지정하지 않았다면, 화면에서 날짜를 직접 입력받도록 작동 (더블클릭 실행 시 창이 바로 꺼지는 현상 방지)
     if not date_str:
         interactive_mode = True
         print("\n=== Travel Planner 대화형 실행 모드 ===")
