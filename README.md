@@ -4,21 +4,18 @@
 
 ---
 
-### 📂 프로젝트 폴더 및 주요 파일 역할
-```text
-├── 01_document/            # 과제 문서 보관 폴더
-├── 02_source/              # 핵심 모듈 소스 폴더
-│   ├── llm_client.py       # Google Gemini LLM API 연동 및 JSON 수집 모듈
-│   ├── map_client.py       # Naver Local API 연동 및 맛집 검색 모듈
-│   ├── report_generator.py # 수집된 데이터를 합쳐 가독성 높은 리포트로 조립하는 모듈
-│   └── utils.py            # 날짜 검증, 결과 캐싱(Caching), 오류 누적 기록 등 유틸 모듈
-├── results/                # 날짜별로 최종 생성되는 결과물 폴더 (JSON, Markdown) — 자동 생성
-├── travel_planner.py       # 메인 실행 파일 (날짜 옵션 및 대화형 입력 처리)
-├── .env                    # 실제 API 키 입력 파일 (직접 생성 필요, Git 추적 제외)
-├── .env.template           # API 키 입력 양식 템플릿 (키 값 없이 제공)
-├── .gitignore              # Git 버전 관리에서 .env 및 결과물(results/) 자동 차단
-└── README.md               # 최종 프로젝트 수행 보고서 (본 문서)
-```
+### 📂 주요 파일 구성
+
+| 파일 / 폴더 | 역할 |
+|-------------|------|
+| [travel_planner.py](./travel_planner.py) | 메인 진입점 — CLI 파싱, 실행 흐름 총괄 |
+| [02_source/llm_client.py](./02_source/llm_client.py) | Gemini API 연동 — 여행지 추천(JSON) 및 리포트 생성 |
+| [02_source/map_client.py](./02_source/map_client.py) | Naver Local API 연동 — 맛집 검색 및 오류 격리 |
+| [02_source/utils.py](./02_source/utils.py) | 날짜 검증, 오류 누적 관리, 캐싱, 파일 저장 |
+| [02_source/report_generator.py](./02_source/report_generator.py) | 최종 리포트 `.md` 파일 저장 |
+| `.env` / `.env.template` | API 키 관리 — 실제 키는 `.env`에, 양식은 `.env.template`으로 분리 제공 |
+| `.gitignore` | `.env` 및 `results/` 폴더를 Git 추적에서 자동 차단 |
+| `results/` | 실행 결과물 자동 저장 폴더 — `{날짜}_data.json`, `{날짜}_travel_plan.md` |
 
 ---
 
@@ -132,23 +129,40 @@ if not os.path.exists(results_dir):
     os.makedirs(results_dir, exist_ok=True)  # 폴더가 없으면 자동으로 생성
 ```
 
-**원본 데이터 JSON 구조 예시**
+**실제 실행 결과 JSON** (`results/2026-10-15_data.json`)
 
-수집된 모든 데이터(추천 결과, 맛집 목록, 오류 이력)를 하나의 JSON 파일로 통합 저장합니다.
+`python travel_planner.py --date "2026-10-15"` 실행 시 실제로 저장된 원본 데이터입니다. 보너스 과제인 복수 지역 추천이 적용되어 3개 도시와 각 도시별 맛집이 수집되었습니다.
 
 ```json
 {
-  "recommended_city": "단양",
-  "recommended_cities": ["단양", "설악산"],
-  "weather": "10월 중순 평균 14°C 내외, 단풍이 절정에 달하는 시기",
-  "events": ["단양 마늘축제", "설악 단풍 걷기 대회"],
-  "reason": "10월 중순은 내륙 산간 지역의 단풍이 가장 아름다운 시기입니다...",
-  "restaurants": {
-    "단양": [{ "name": "단양식당", "address": "충북 단양군...", "category": "한식" }]
-  },
-  "errors": []
+    "recommended_cities": ["경주", "전주", "속초"],
+    "recommended_city": "경주",
+    "weather": "낮 기온 약 15~20°C로 쾌적하며, 아침저녁으로는 5~10°C로 쌀쌀하여 가벼운 외투가 필요합니다. 단풍이 절정에 달하는 시기입니다.",
+    "events": [
+        "경주 신라문화제 (매년 10월 중 개최)",
+        "전주 비빔밥 축제 (매년 10월 하순 개최)",
+        "설악산 단풍 절정기 (10월 중순~하순)"
+    ],
+    "reason": "경주는 신라 천년의 역사와 가을 단풍이 어우러져 고즈넉한 분위기를 선사합니다. 전주는 한옥마을의 전통미와 맛있는 음식을 함께 즐길 수 있으며, 속초는 설악산 국립공원의 웅장한 단풍을 감상할 수 있는 최적의 거점입니다.",
+    "restaurants": {
+        "경주": [
+            { "name": "단향회",              "address": "경상북도 경주시 첨성로81번길 28-1", "category": "음식점>한식", "url": "https://app.catchtable.co.kr/ct/shop/danhh.gj" },
+            { "name": "수경사",              "address": "경상북도 경주시 사정로57번길 25",   "category": "음식점>한식", "url": "https://www.instagram.com/sugyeongsa_official" },
+            { "name": "신라제면 경주황리단길점", "address": "경상북도 경주시 첨성로81번길 22-7", "category": "한식>국수",   "url": "" }
+        ],
+        "전주": [
+            { "name": "전주는전주 한옥마을 본점", "address": "전북 전주시 완산구 태조로 31",       "category": "음식점>한식",       "url": "https://www.instagram.com/Jeonju_is" },
+            { "name": "오두막창 전주객사점",     "address": "전북 전주시 완산구 전주객사2길 73-1", "category": "한식>곱창,막창,양", "url": "" }
+        ],
+        "속초": [
+            { "name": "봉포머구리집",    "address": "강원 속초시 영랑해안길 223",  "category": "한식>생선회",   "url": "https://meoguri.com/" },
+            { "name": "속초옥수수소금빵", "address": "강원 속초시 수복로187번길 1", "category": "카페>베이커리", "url": "https://www.instagram.com/sokcho_cornsaltbread" }
+        ]
+    },
+    "errors": []
 }
 ```
+
 
 `"errors": []`처럼 오류 목록이 비어 있으면 모든 단계가 정상적으로 처리된 것이며, 오류 발생 시 해당 단계와 유형이 기록됩니다.
 
@@ -164,6 +178,40 @@ if not os.path.exists(results_dir):
 ## 1일 일정 제안    ← 오전 / 오후 / 저녁 동선 포함
 ## 오류 요약(errors) ← 오류 발생 시에만 표기
 ```
+
+---
+
+## ✅ 과제 요구사항 이행 점검
+
+과제미션(N2_A1-2)의 요구항목을 기준으로 구현 충족 여부를 항목별로 점검합니다.
+
+### 기능 요구사항
+
+| # | 요구 항목 | 구현 파일 | 충족 여부 |
+|---|-----------|-----------|----------|
+| 1 | `argparse`로 `--date` CLI 옵션 처리 | `travel_planner.py` | ✅ |
+| 2 | 날짜 형식 오류 시 사용법 출력 후 종료 | `travel_planner.py` + `utils.py` | ✅ |
+| 3 | LLM API 선택 — Gemini 계열 사용 | `llm_client.py` | ✅ |
+| 4 | 지도 API 선택 — Naver Local Search 사용 | `map_client.py` | ✅ |
+| 5 | LLM 응답: `recommended_city`, `weather`, `events`, `reason` 필수 키 포함 JSON 출력 | `llm_client.py` | ✅ |
+| 6 | LLM JSON 파싱 실패 시 재시도 최대 1회 | `llm_client.py` | ✅ |
+| 7 | 맛집 검색 입력: `recommended_city` 기반 키워드 조합 | `map_client.py` | ✅ |
+| 8 | 맛집 권장 5곳 — `name`, `address`, `category`, `url`, 좌표 필드 수집 | `map_client.py` | ✅ |
+| 9 | 맛집 검색 0건이어도 프로그램 중단 없이 진행 | `map_client.py` | ✅ |
+| 10 | 최종 리포트: 추천 지역·이유, 날씨, 행사, 맛집, 1일 일정 포함 Markdown 생성 | `llm_client.py` | ✅ |
+| 11 | API 키 미설정 시 즉시 종료 + 설정 방법 안내 | `travel_planner.py` | ✅ |
+| 12 | 지도 API 실패 시 맛집 섹션만 "데이터 없음" 처리, 리포트 생성 계속 진행 | `map_client.py` | ✅ |
+| 13 | 오류 목록(`errors` 배열) 내부 관리 및 JSON 파일에 기록 | `utils.py` | ✅ |
+| 14 | API 키를 코드에 직접 작성 금지 — `.env` / 환경변수로 관리 | 전체 | ✅ |
+| 15 | `results/` 폴더에 원본 JSON 저장 (추천 결과 + 맛집 + errors 포함) | `utils.py` | ✅ |
+| 16 | `results/` 폴더에 최종 리포트 `.md` 저장 | `report_generator.py` | ✅ |
+
+### 보너스 과제
+
+| # | 보너스 항목 | 구현 내용 | 충족 여부 |
+|---|------------|-----------|----------|
+| B1 | 복수 지역 추천 (`recommended_cities` 배열) | 2~3개 도시 추천 및 각 도시별 맛집 검색 루프 처리 | ✅ |
+| B2 | 결과 캐싱 — 동일 날짜 재실행 시 API 호출 생략 | `get_cached_data()` 로 저장된 JSON 재사용 | ✅ |
 
 ---
 
