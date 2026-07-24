@@ -181,89 +181,29 @@ if not os.path.exists(results_dir):
 
 ---
 
-## ✅ 과제 요구사항 이행 점검
+## 2. 과제 요구사항별 구현 현황
 
-과제미션(N2_A1-2)의 요구항목을 기준으로 구현 충족 여부를 항목별로 점검합니다.
-
-### 기능 요구사항
-
-| # | 요구 항목 | 구현 파일 | 충족 여부 |
-|---|-----------|-----------|----------|
-| 1 | `argparse`로 `--date` CLI 옵션 처리 | `travel_planner.py` | ✅ |
-| 2 | 날짜 형식 오류 시 사용법 출력 후 종료 | `travel_planner.py` + `utils.py` | ✅ |
-| 3 | LLM API 선택 — Gemini 계열 사용 | `llm_client.py` | ✅ |
-| 4 | 지도 API 선택 — Naver Local Search 사용 | `map_client.py` | ✅ |
-| 5 | LLM 응답: `recommended_city`, `weather`, `events`, `reason` 필수 키 포함 JSON 출력 | `llm_client.py` | ✅ |
-| 6 | LLM JSON 파싱 실패 시 재시도 최대 1회 | `llm_client.py` | ✅ |
-| 7 | 맛집 검색 입력: `recommended_city` 기반 키워드 조합 | `map_client.py` | ✅ |
-| 8 | 맛집 권장 5곳 — `name`, `address`, `category`, `url`, 좌표 필드 수집 | `map_client.py` | ✅ |
-| 9 | 맛집 검색 0건이어도 프로그램 중단 없이 진행 | `map_client.py` | ✅ |
-| 10 | 최종 리포트: 추천 지역·이유, 날씨, 행사, 맛집, 1일 일정 포함 Markdown 생성 | `llm_client.py` | ✅ |
-| 11 | API 키 미설정 시 즉시 종료 + 설정 방법 안내 | `travel_planner.py` | ✅ |
-| 12 | 지도 API 실패 시 맛집 섹션만 "데이터 없음" 처리, 리포트 생성 계속 진행 | `map_client.py` | ✅ |
-| 13 | 오류 목록(`errors` 배열) 내부 관리 및 JSON 파일에 기록 | `utils.py` | ✅ |
-| 14 | API 키를 코드에 직접 작성 금지 — `.env` / 환경변수로 관리 | 전체 | ✅ |
-| 15 | `results/` 폴더에 원본 JSON 저장 (추천 결과 + 맛집 + errors 포함) | `utils.py` | ✅ |
-| 16 | `results/` 폴더에 최종 리포트 `.md` 저장 | `report_generator.py` | ✅ |
-
-### 보너스 과제
-
-| # | 보너스 항목 | 구현 내용 | 충족 여부 |
-|---|------------|-----------|----------|
-| B1 | 복수 지역 추천 (`recommended_cities` 배열) | 2~3개 도시 추천 및 각 도시별 맛집 검색 루프 처리 | ✅ |
-| B2 | 결과 캐싱 — 동일 날짜 재실행 시 API 호출 생략 | `get_cached_data()` 로 저장된 JSON 재사용 | ✅ |
+과제미션(N2_A1-2)의 요구항목을 기준으로, 각 항목의 **충족 여부 · 구현 파일 · 핵심 소스 코드**를 항목별로 함께 정리합니다.
 
 ---
-
-## 1. 개요 및 개발 아키텍처
-
-- **수행 목표**: 단일 API 호출의 한계를 넘어, LLM의 구조화된 JSON 출력을 다음 지도 검색 API의 입력으로 결합하는 파이프라인 아키텍처를 구축하고, 예외 복구(Fallback) 및 최적화(Caching)를 만족하는 안정적인 비즈니스 로직을 실현합니다.
-- **연동 기술 스택**:
-  - **LLM**: Google Gemini 2.5-flash (google-genai SDK 및 REST API 폴백 탑재)
-  - **Local/Map**: Naver Local Search API (지역/장소 검색)
-  - **환경 및 유틸**: Python 3.10+, python-dotenv (환경변수 관리), requests (HTTP 통신)
-
-**파이프라인(Pipeline) 구조** — 각 단계의 출력이 다음 단계의 입력으로 자동 연결됩니다.
-
-```
-사용자 날짜 입력
-      ↓
-[1단계] Gemini AI  →  추천 도시명 포함 JSON
-      ↓  도시명을 그대로 다음 단계 입력으로 전달
-[2단계] Naver 지도 API  →  맛집 목록 JSON
-      ↓  두 결과를 합쳐 AI에게 재전달
-[3단계] Gemini AI  →  최종 여행 리포트 (Markdown)
-      ↓
-results/ 폴더에 JSON + .md 파일 저장
-```
-
----
-
-## 2. 과제 요구사항별 구현 현황 및 핵심 소스 코드
 
 ### ① CLI 인터페이스 및 입력값 검증 (argparse)
 
-- **구현 내용**: `argparse` 모듈을 적용하여 [travel_planner.py](./travel_planner.py)에서 `--date` (또는 `-date`) 인자를 처리하도록 구현했습니다.
-- **날짜 형식 오류 처리**: 형식이 잘못되거나 달력에 없는 날짜(`2026-02-30` 등)이면 사용법을 출력하고 `sys.exit(1)`로 즉시 종료합니다.
-- **UX 보완**: 인자 없이 실행(더블클릭 포함)하면 대화형 입력 모드로 자동 전환됩니다.
+| 요구 항목 | 구현 파일 | 충족 여부 |
+|-----------|-----------|----------|
+| `argparse`로 `--date` CLI 옵션 처리 | `travel_planner.py` | ✅ |
+| 날짜 형식 오류 시 사용법 출력 후 종료 | `travel_planner.py` + `utils.py` | ✅ |
 
-#### 📂 [travel_planner.py](./travel_planner.py) — CLI 옵션 파싱
-
-`argparse`는 터미널에서 `--date "날짜"` 처럼 추가 정보를 넘기는 방법을 자동으로 해석해주는 파이썬 표준 모듈입니다.
+`argparse`는 터미널에서 `--date "날짜"` 처럼 추가 정보를 넘기는 방법을 자동으로 해석해주는 파이썬 표준 모듈입니다. `required=False`로 설정하여 날짜 옵션이 생략된 경우에도 오류 없이 진입하고, 이후 대화형 모드로 분기합니다.
 
 ```python
+# travel_planner.py — CLI 옵션 파싱
 parser = argparse.ArgumentParser(description="국내 여행지 추천 및 맛집 검색 CLI 프로그램")
 parser.add_argument("--date", "-date", type=str, required=False, help="여행할 날짜 (YYYY-MM-DD)")
 args = parser.parse_args()
-```
 
-`required=False`로 설정하여 날짜 옵션이 생략된 경우에도 오류 없이 진입하고, 이후 대화형 모드로 분기합니다.
-
-#### 📂 [travel_planner.py](./travel_planner.py) — 대화형 모드 전환 및 날짜 정제
-
-```python
-if not date_str:
-    interactive_mode = True
+# 날짜 미입력 시 대화형 모드로 전환 (더블클릭 실행 등)
+if not args.date:
     date_str = input("여행할 날짜를 입력해 주세요 (YYYY-MM-DD): ").strip()
 
 # 정규식으로 날짜 패턴만 추출 — "--date 2026-03-15"를 통째로 입력한 경우에도 처리
@@ -272,11 +212,10 @@ if match:
     date_str = match.group(0)
 ```
 
-`re.search()`의 정규식 패턴 `\d{4}-\d{2}-\d{2}` 는 "숫자 4자리-숫자 2자리-숫자 2자리" 형태를 찾는 텍스트 필터입니다. 사용자가 명령어 전체를 잘못 입력해도 날짜 부분만 자동 추출합니다.
-
-#### 📂 [02_source/utils.py](./02_source/utils.py) — 날짜 유효성 검증
+날짜 유효성 검증은 `utils.py`의 `validate_date()`가 담당합니다. `datetime.strptime()`은 `"2026-02-30"` 처럼 형식은 맞지만 달력에 없는 날짜도 오류로 잡아냅니다. 검증 실패 시 사용법을 출력하고 `sys.exit(1)`로 즉시 종료합니다.
 
 ```python
+# 02_source/utils.py — 날짜 유효성 검증
 def validate_date(date_str: str) -> bool:
     try:
         datetime.strptime(date_str, "%Y-%m-%d")  # 형식과 달력 유효성 동시 검사
@@ -285,101 +224,89 @@ def validate_date(date_str: str) -> bool:
         return False
 ```
 
-`datetime.strptime()`은 형식이 올바르더라도 `"2026-02-30"` 처럼 실제 달력에 없는 날짜는 `ValueError`를 발생시킵니다. 이를 통해 형식 검사와 유효성 검사를 한 번에 처리합니다. 검증 실패 시 `sys.exit(1)`로 종료하며, `1`은 관례적으로 "비정상 종료"를 의미하는 오류 코드입니다.
-
 ---
 
 ### ② LLM API 연동 및 JSON 구조화 (1차 추천)
 
-- **구현 내용**: 날짜 정보를 Google Gemini 2.5-flash API로 전달하여 국내 여행 지역 **2~3곳**, 날씨, 행사, 추천 근거를 JSON 형태로 응답받습니다. (보너스: 복수 지역 추천 구현)
-- **파싱 실패 방어**: JSON 형식이 아닌 답변이 반환되면 에러를 기록하고 프롬프트를 보정하여 **최대 1회 재요청**합니다. 재시도도 실패하면 기본 폴백 값으로 계속 진행합니다.
+| 요구 항목 | 구현 파일 | 충족 여부 |
+|-----------|-----------|----------|
+| LLM API 선택 — Gemini 계열 사용 | `llm_client.py` | ✅ |
+| LLM 응답: `recommended_city`, `weather`, `events`, `reason` 필수 키 포함 JSON 출력 | `llm_client.py` | ✅ |
+| LLM JSON 파싱 실패 시 재시도 최대 1회 | `llm_client.py` | ✅ |
+| 복수 지역 추천 `recommended_cities` 배열 (보너스) | `llm_client.py` | ✅ |
 
-#### 📂 [02_source/llm_client.py](./02_source/llm_client.py) — JSON 응답 강제 설정
-
-```python
-config = types.GenerateContentConfig(system_instruction=system_prompt)
-config.response_mime_type = "application/json"  # AI 응답을 JSON 형식으로 강제
-```
-
-`response_mime_type = "application/json"` 설정은 Gemini에게 일반 텍스트 대신 순수 JSON 구조로만 응답하도록 제한합니다. 이렇게 해야만 응답을 파이썬 딕셔너리로 변환하여 다음 단계의 입력으로 활용할 수 있습니다.
-
-#### 📂 [02_source/llm_client.py](./02_source/llm_client.py) — 1차 요청 및 JSON 파싱
+날짜 정보를 Google Gemini 2.5-flash API로 전달하여 국내 여행 지역 2~3곳, 날씨, 행사, 추천 근거를 JSON 형태로 응답받습니다. `response_mime_type = "application/json"` 설정으로 AI가 일반 텍스트 대신 순수 JSON 구조로만 응답하도록 제한합니다.
 
 ```python
+# 02_source/llm_client.py — JSON 응답 강제 및 파싱
+config.response_mime_type = "application/json"   # AI 응답을 JSON 형식으로 강제
+
 response_text = self._call_gemini_api(prompt, system_prompt, json_mode=True)
-result = json.loads(response_text)  # 문자열 → 파이썬 딕셔너리 변환
+result = json.loads(response_text)   # 문자열 → 파이썬 딕셔너리 변환
 ```
 
-`json.loads()`는 `'{"city": "부산"}'` 같은 JSON **문자열**을 `{"city": "부산"}` 형태의 파이썬 **딕셔너리**로 변환합니다. 변환에 실패하면 파싱 오류로 처리되어 재시도 로직으로 진입합니다.
-
-#### 📂 [02_source/llm_client.py](./02_source/llm_client.py) — 파싱 실패 시 1회 재시도
+JSON 파싱에 실패하면 오류를 기록하고 프롬프트를 보정하여 최대 1회 재시도합니다. 재시도도 실패하면 기본값으로 대체하고 다음 단계를 계속 진행합니다.
 
 ```python
+# 파싱 실패 시 1회 재시도 — 프롬프트에 경고 문구 추가
 except Exception as e:
     error_handler.add_error("llm_recommendation_attempt1", "PARSE_ERROR", str(e))
 
-# 프롬프트에 경고 문구를 추가하여 재시도 (최대 1회)
 retry_prompt = prompt + "\n경고: 반드시 중괄호로 시작하는 엄격한 JSON 형식만 출력해주세요."
 ```
-
-재시도를 최대 1회로 제한하는 이유는, 무한 재시도는 API 쿼터를 낭비하고 프로그램 응답성을 저하시키기 때문입니다. 2차 시도도 실패하면 호출부에서 기본값으로 대체하고 다음 단계를 계속 진행합니다.
 
 ---
 
 ### ③ 지도/장소 검색 API 연동 및 예외 처리 (Naver Local)
 
-- **구현 내용**: 추천된 도시명에 `" 맛집"`을 결합(예: `"부산 맛집"`)하여 Naver Local Search API에 GET 방식으로 요청하고, 각 도시별 최대 5곳의 식당 정보를 수집합니다.
-- **오류 격리(Error Isolation)**: 인증 오류(401/403), 결과 0건, 네트워크 장애 등 어떤 오류가 발생해도 프로그램이 강제 종료되지 않습니다. 오류를 기록하고 빈 목록으로 다음 단계를 이어갑니다.
+| 요구 항목 | 구현 파일 | 충족 여부 |
+|-----------|-----------|----------|
+| 지도 API 선택 — Naver Local Search 사용 | `map_client.py` | ✅ |
+| 맛집 검색 입력: `recommended_city` 기반 키워드 조합 | `map_client.py` | ✅ |
+| 맛집 권장 5곳 — `name`, `address`, `category`, `url`, 좌표 필드 수집 | `map_client.py` | ✅ |
+| 맛집 검색 0건이어도 프로그램 중단 없이 진행 | `map_client.py` | ✅ |
+| 지도 API 실패 시 맛집 섹션만 "데이터 없음" 처리, 리포트 생성 계속 진행 | `map_client.py` | ✅ |
 
-#### 📂 [02_source/map_client.py](./02_source/map_client.py) — API 인증 및 요청
+추천된 도시명에 `" 맛집"`을 결합(예: `"부산 맛집"`)하여 Naver Local Search API에 GET 방식으로 요청합니다. 인증 정보는 HTTP **헤더(Headers)**에 담아 전달하며, `timeout=15`로 무한 대기를 방지합니다.
 
 ```python
+# 02_source/map_client.py — API 인증 및 요청
 headers = {
     "X-Naver-Client-Id":     self.naver_id,
     "X-Naver-Client-Secret": self.naver_secret
 }
-params = {"query": f"{city_name} 맛집", "display": limit}
+params = {"query": f"{city_name} 맛집", "display": limit}  # "부산 맛집" 자동 조합
 response = requests.get(url, headers=headers, params=params, timeout=15)
 ```
 
-Naver API는 인증 정보를 HTTP **헤더(Headers)**에 담아 전달하는 GET 방식입니다. `params`에 넘긴 검색어는 자동으로 URL 뒤에 `?query=부산+맛집&display=5` 형태로 조합됩니다. `timeout=15`는 15초 내 응답이 없으면 오류로 처리하여 무한 대기를 방지합니다.
-
-#### 📂 [02_source/map_client.py](./02_source/map_client.py) — 상태 코드별 오류 분기
+인증 오류(401/403), 결과 0건, 네트워크 장애 등 어떤 오류가 발생해도 빈 리스트를 반환하여 프로그램이 중단되지 않습니다. 오류 내역은 `ErrorHandler`에 기록되어 최종 JSON 파일의 `errors` 항목에 남습니다.
 
 ```python
-if response.status_code in (401, 403):   # 인증 실패
+# 상태 코드별 오류 격리 처리
+if response.status_code in (401, 403):    # 인증 실패
     error_handler.add_error("place_search", "AUTH_ERROR", f"HTTP {response.status_code}")
-    return []   # 빈 리스트 반환 → 프로그램은 중단 없이 계속 진행
+    return []   # 빈 리스트 반환 → 다음 단계(리포트 생성) 계속 진행
 
-if response.status_code != 200:          # 기타 서버 오류
-    error_handler.add_error("place_search", "API_ERROR", f"HTTP {response.status_code}")
-    return []
-```
-
-`401`은 API 키가 잘못됐거나 없는 경우, `403`은 해당 API 사용 권한이 없는 경우입니다. 두 경우 모두 오류 내역만 `ErrorHandler`에 기록하고 빈 리스트를 반환합니다. 이로써 맛집 섹션만 "데이터 없음"으로 표기되고 리포트 생성은 계속 진행됩니다.
-
-#### 📂 [02_source/map_client.py](./02_source/map_client.py) — 네트워크 오류 처리
-
-```python
-except requests.exceptions.RequestException as e:
+except requests.exceptions.RequestException as e:  # 네트워크 오류
     error_handler.add_error("place_search", "NETWORK_ERROR", str(e))
     return []
 ```
-
-인터넷 연결 끊김이나 타임아웃처럼 HTTP 응답 자체를 받지 못하는 경우는 `RequestException`으로 일괄 처리합니다. `try-except` 구문은 "시도해보고 실패하면 이렇게 처리해"라는 파이썬의 예외 처리 구문으로, 외부 API처럼 언제든 실패할 수 있는 연산에서 필수적으로 사용합니다.
 
 ---
 
 ### ④ 오류 누적 관리 — ErrorHandler
 
-과제 요구사항에 따라, 실행 중 발생한 모든 오류를 프로그램 중단 없이 내부적으로 수집하여 최종 JSON 및 리포트에 함께 기록합니다.
+| 요구 항목 | 구현 파일 | 충족 여부 |
+|-----------|-----------|----------|
+| 오류 목록(`errors` 배열) 내부 관리 및 JSON 파일에 기록 | `utils.py` | ✅ |
 
-#### 📂 [02_source/utils.py](./02_source/utils.py) — ErrorHandler 클래스
+실행 중 발생한 모든 오류를 프로그램 중단 없이 내부적으로 수집합니다. 이를 **Graceful Degradation(우아한 성능 저하)** 이라 하며, 부분 실패가 전체 실패로 번지지 않도록 격리하는 설계 원칙입니다.
 
 ```python
+# 02_source/utils.py — ErrorHandler 클래스
 class ErrorHandler:
     def __init__(self):
-        self.errors = []  # 실행 중 발생한 오류를 누적하는 리스트
+        self.errors = []
 
     def add_error(self, step: str, error_type: str, message: str):
         self.errors.append({"step": step, "type": error_type, "message": message})
@@ -387,8 +314,6 @@ class ErrorHandler:
     def get_errors(self) -> list:
         return self.errors   # 저장 시 JSON의 "errors" 키에 담김
 ```
-
-오류가 발생한 단계(`step`)와 유형(`type`), 상세 내용(`message`)을 딕셔너리로 묶어 리스트에 누적합니다. 이를 **Graceful Degradation(우아한 성능 저하)** 이라 하며, 부분 실패가 전체 실패로 번지지 않도록 격리하는 설계 원칙입니다.
 
 오류 발생 시 원본 JSON의 `errors` 섹션 기록 예시:
 
@@ -404,30 +329,32 @@ class ErrorHandler:
 
 ### ⑤ 최종 리포트 생성 및 결과 저장
 
-- **최종 리포트**: 1차 추천 JSON + 도시별 맛집 목록 + 에러 기록을 Gemini에게 전달하여 Markdown 형식의 리포트를 생성합니다. `추천 지역`, `날씨 요약`, `행사/축제`, `맛집 추천`, `1일 일정 제안`(오전/오후/저녁), `오류 요약` 섹션을 포함합니다.
-- **결과 캐싱 (보너스)**: 동일 날짜로 재실행 시 기저장된 JSON이 있으면 API 호출을 건너뛰고 리포트를 즉시 재생성합니다.
+| 요구 항목 | 구현 파일 | 충족 여부 |
+|-----------|-----------|----------|
+| 최종 리포트: 추천 지역·이유, 날씨, 행사, 맛집, 1일 일정 포함 Markdown 생성 | `llm_client.py` | ✅ |
+| API 키 미설정 시 즉시 종료 + 설정 방법 안내 | `travel_planner.py` | ✅ |
+| `results/` 폴더에 원본 JSON 저장 (추천 결과 + 맛집 + errors 포함) | `utils.py` | ✅ |
+| `results/` 폴더에 최종 리포트 `.md` 저장 | `report_generator.py` | ✅ |
+| 결과 캐싱 — 동일 날짜 재실행 시 API 호출 생략 (보너스) | `utils.py` | ✅ |
 
-#### 📂 [travel_planner.py](./travel_planner.py) — 원본 데이터 조립 및 파일 저장
+1차 추천 JSON + 도시별 맛집 목록 + 에러 기록을 Gemini에게 전달하여 Markdown 형식의 리포트를 생성합니다. 수집된 전체 데이터는 하나의 딕셔너리로 조립한 뒤 JSON 파일로 저장하며, 마크다운 리포트는 별도의 `.md` 파일로 분리 저장합니다.
 
 ```python
+# travel_planner.py — 원본 데이터 조립 및 파일 저장
 raw_data = {
     "recommended_cities": recommendation.get("recommended_cities"),
     "weather":            recommendation.get("weather"),
     "restaurants":        places_data,               # 도시별 맛집 리스트
     "errors":             error_handler.get_errors() # 누적된 오류 목록
 }
-
 json_path = save_json_data(date_str, raw_data)     # results/{date}_data.json
 md_path   = save_report(date_str, report_content)  # results/{date}_travel_plan.md
 ```
 
-수집된 전체 데이터를 하나의 딕셔너리로 조립한 뒤 JSON 파일로 저장하고, LLM이 생성한 마크다운 리포트는 별도의 `.md` 파일로 저장합니다. 이로써 원본 데이터와 최종 결과물이 분리되어 보관됩니다.
-
-#### 📂 [02_source/utils.py](./02_source/utils.py) — 캐싱 처리
-
-캐싱(Caching)은 이전 실행 결과를 파일로 저장해두고, 동일한 날짜로 재실행 시 API를 다시 호출하지 않고 저장된 파일을 그대로 활용하는 최적화 기법입니다.
+캐싱(Caching)은 이전 실행 결과를 파일로 저장해두고, 동일한 날짜로 재실행 시 API를 다시 호출하지 않고 저장된 파일을 그대로 활용하는 최적화 기법입니다. Gemini와 Naver API 호출을 모두 건너뛰므로 API 쿼터 낭비와 중복 비용을 방지합니다.
 
 ```python
+# 02_source/utils.py — 캐싱 처리
 def get_cached_data(date_str: str, results_dir: str = "results") -> dict | None:
     cache_path = os.path.join(results_dir, f"{date_str}_data.json")
     if os.path.exists(cache_path):
@@ -435,8 +362,6 @@ def get_cached_data(date_str: str, results_dir: str = "results") -> dict | None:
             return json.load(f)   # 저장된 JSON 파일을 딕셔너리로 읽어옴
     return None
 ```
-
-`json.load(f)`는 파일 객체에서 JSON을 읽는 함수로, 문자열에서 읽는 `json.loads()`와 구별됩니다. 동일 날짜로 재실행 시 Gemini와 Naver API 호출을 모두 건너뛰므로 API 쿼터 낭비와 중복 비용을 방지합니다.
 
 ---
 
